@@ -47,8 +47,7 @@ while($row = mysqli_fetch_assoc($result)) {
     // Set the service label and features based on service type
     if ($service_type == 'Premium') {
         $service_label = "Premium Service";
-        $label_class = "premium";
-        $features = "Exclusive features with personalized service, priority booking, and additional pampering!";
+        $label_class = "Premium";
     } elseif ($service_type == 'Medium') {
         $service_label = "Medium Service";
         $label_class = "medium";
