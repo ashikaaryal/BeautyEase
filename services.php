@@ -47,15 +47,15 @@ while($row = mysqli_fetch_assoc($result)) {
     // Set the service label and features based on service type
     if ($service_type == 'Premium') {
         $service_label = "Premium Service";
-        $label_class = "premium";
-        $features = "Exclusive features with personalized service, priority booking, and additional pampering!";
+        $label_class = "Premium";
+        $features = "";
     } elseif ($service_type == 'Medium') {
         $service_label = "Medium Service";
         $label_class = "medium";
         $features = "A great value option with quality service!";
     } else {
         $service_label = "Normal Service";
-        $label_class = "normal";
+        $label_class = "Normal";
         $features = "";  // No special features for normal
     }
 ?>
@@ -78,7 +78,7 @@ while($row = mysqli_fetch_assoc($result)) {
             <a href="javascript:void(0);" id="view-details-btn-<?= $row['id']; ?>" 
                onclick="toggleDescription(<?= $row['id']; ?>)"
                style="color:#ff5e8e; text-decoration:none; font-weight:bold;">
-               View Details
+    
             </a>
             <span id="more-<?= $row['id']; ?>" style="display:none;">
                 <p style="color:#777; font-size:14px; margin-top:10px;"><?= htmlspecialchars($description); ?></p>
