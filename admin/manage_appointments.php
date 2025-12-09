@@ -80,12 +80,12 @@ session_start();
     </div>
 
 <?php
-// SQL QUERY - Include status field
-$query = "SELECT b.id,b.address_type, b.address,b.phone, b.date, b.time, b.email, b.status,
+// SQL QUERY - Sort by status and date/time
+$query = "SELECT b.id, b.address_type, b.address, b.phone, b.date, b.time, b.email, b.status,
                  s.service_name, s.price, s.image
           FROM bookings b
           JOIN services s ON b.service_id = s.id
-          ORDER BY b.date ASC, b.time ASC";
+          ORDER BY FIELD(b.status, 'Pending', 'Approved', 'Completed'), b.date ASC, b.time ASC";
 
 // RUN QUERY
 $result = mysqli_query($conn, $query);
@@ -106,11 +106,9 @@ if (mysqli_num_rows($result) > 0) {
               <th>Price (Rs.)</th>
               <th>Date</th>
               <th>Time</th>
-                 <th>Services_Type</th>
-
+              <th>Services Type</th>
               <th>Address</th>
-
-                <th>User Phone</th>
+              <th>User Phone</th>
               <th>Status</th>
               <th>Action</th>
             </tr>";
@@ -127,9 +125,9 @@ if (mysqli_num_rows($result) > 0) {
                 <td>{$row['price']}</td>
                 <td>{$row['date']}</td>
                 <td>{$row['time']}</td>
-                   <td>{$row['address_type']}</td>
+                <td>{$row['address_type']}</td>
                 <td>{$row['address']}</td>
-                 <td>{$row['phone']}</td>
+                <td>{$row['phone']}</td>
                 <td><strong>{$status}</strong></td>
                 <td>";
 
@@ -168,7 +166,6 @@ if (mysqli_num_rows($result) > 0) {
     echo "<p class='no-data'>No appointments booked yet.</p>";
 }
 ?>
-
 
 <a href='manageuser.php' class='back'>Dashboard</a>
 </div>
