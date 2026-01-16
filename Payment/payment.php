@@ -1,201 +1,94 @@
 <?php
 session_start();
-
 include('../includes/connect.php');
 
-
-// Check connection
-if (!$conn) {
-    die("Database connection failed: " . mysqli_connect_error());
-}
-
-// Check if booking data exists in session
-if (!isset($_SESSION['booking_id']) || !isset($_SESSION['service_price'])) {
+if (!isset($_SESSION['booking_id'], $_SESSION['amount'])) {
     header("Location: book_appointment.php");
     exit();
 }
 
 $booking_id = $_SESSION['booking_id'];
-$amount = $_SESSION['service_price'];
-$amount_in_paisa = $amount * 100; // Convert to paisa for Khalti
 
-// Fetch service details
-$service_id = $_SESSION['service_id'];
-$service_query = mysqli_query($conn, "SELECT * FROM services WHERE id = '$service_id'");
+// FORCE numeric consistency
+$amount = number_format((float)$_SESSION['amount'], 2, '.', '');
+$tax_amount = number_format(0, 2, '.', '');
+$total_amount = number_format($amount + $tax_amount, 2, '.', '');
 
-if (!$service_query) {
-    die("Database query failed: " . mysqli_error($conn));
-}
+$transaction_uuid = $booking_id . '-' . time();
+$product_code = "EPAYTEST";
 
-$service = mysqli_fetch_assoc($service_query);
+// Save UUID
+$_SESSION['transaction_uuid'] = $transaction_uuid;
 
-if (!$service) {
-    die("Service not found!");
-}
+// RC TEST SECRET KEY
+$secret_key = "8gBm/:&EnhH.1/q";
+
+// Generate signature (ORDER MATTERS)
+$signature_string = "total_amount={$total_amount},transaction_uuid={$transaction_uuid},product_code={$product_code}";
+$signature = base64_encode(hash_hmac('sha256', $signature_string, $secret_key, true));
+
+$base_url = "http://localhost/myproject/beautyease";
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment | BeautiEase</title>
-    <script src="https://khalti.s3.ap-south-1.amazonaws.com/KPG/dist/2020.12.17.0.0.0/khalti-checkout.iffe.js"></script>
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(to right, #d5b1bcff, #ff5e8e);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
+<meta charset="UTF-8">
+<title>Payment | BeautiEase</title>
 
-        .container {
-            background: #fff;
-            width: 90%;
-            max-width: 500px;
-            padding: 35px;
-            border-radius: 20px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        h2 {
-            color: #ff5e8e;
-            margin-bottom: 20px;
-        }
-
-        .booking-details {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .booking-details p {
-            margin: 8px 0;
-            font-size: 14px;
-        }
-
-        .amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ff5e8e;
-            margin: 20px 0;
-        }
-
-        #payment-button {
-            background-color: #7732d9;
-            border: none;
-            border-radius: 10px;
-            color: white;
-            padding: 15px 30px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        #payment-button:hover {
-            background-color: #5a24a5;
-            transform: scale(1.05);
-        }
-
-        .back-btn {
-            display: inline-block;
-            margin-top: 15px;
-            color: #ff5e8e;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .back-btn:hover {
-            text-decoration: underline;
-        }
-    </style>
+<style>
+body{
+    font-family:Poppins;
+    background:linear-gradient(to right,#d5b1bc,#ff5e8e);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+.container{
+    background:#fff;
+    padding:30px;
+    width:400px;
+    border-radius:20px;
+    text-align:center;
+}
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
+    cursor:pointer;
+    margin-top:10px;
+}
+.esewa{background:#ff8200;color:#fff;}
+</style>
 </head>
+
 <body>
-    <div class="container">
-        <h2>Complete Your Payment 💳</h2>
-        
-        <!-- <div class="booking-details">
-            <p><strong>Booking ID:</strong> #<?php echo $booking_id; ?></p>
-            <p><strong>Service:</strong> <?php echo htmlspecialchars($service['service_name']); ?></p>
-            <p><strong>Date:</strong> <?php echo $_SESSION['date']; ?></p>
-            <p><strong>Time:</strong> <?php echo $_SESSION['time']; ?></p>
-            <p><strong>Email:</strong> <?php echo $_SESSION['email']; ?></p>
-        </div> -->
+<div class="container">
+<h2>Complete Payment</h2>
 
-        <div class="amount">
-            Total Amount: Rs. <?php echo number_format($amount, 2); ?>
-        </div>
+<p><strong>Booking ID:</strong> #<?= htmlspecialchars($booking_id) ?></p>
+<p><strong>Total Amount:</strong> Rs. <?= htmlspecialchars($total_amount) ?></p>
 
-        <button id="payment-button">Pay with Khalti</button>
-          <button id="payment-button">Pay with Cash</button>
-        <br>
-        <a href="book_appointment.php" class="back-btn">← Back to Booking</a>
-    </div>
+<form action="https://rc-epay.esewa.com.np/api/epay/main/v2/form" method="POST">
 
-    <script>
-      var config = {
-    "publicKey": "01eeaeea218b43268a1d21f5c0cd2ace", 
-    "productIdentity": "<?php echo $booking_id; ?>",
-    "productName": "<?php echo htmlspecialchars($service['service_name']); ?>",
-    "productUrl": "http://localhost/myproject/beautyease",
-    "eventHandler": {
-        onSuccess (payload) {
-            console.log(payload);
-            // Verify payment on server
-            verifyPayment(payload);
-        },
-        onError (error) {
-            console.log(error);
-            alert('Payment failed: ' + error.message);
-        },
-        onClose () {
-            console.log('Widget is closing');
-        }
-    }
-};
+<input type="hidden" name="amount" value="<?= $amount ?>">
+<input type="hidden" name="tax_amount" value="<?= $tax_amount ?>">
+<input type="hidden" name="total_amount" value="<?= $total_amount ?>">
+<input type="hidden" name="transaction_uuid" value="<?= $transaction_uuid ?>">
+<input type="hidden" name="product_code" value="<?= $product_code ?>">
+<input type="hidden" name="product_service_charge" value="0">
+<input type="hidden" name="product_delivery_charge" value="0">
+<input type="hidden" name="success_url" value="<?= $base_url ?>/payment/payment_success.php">
+<input type="hidden" name="failure_url" value="<?= $base_url ?>/payment/payment_failed.php">
+<input type="hidden" name="signed_field_names" value="total_amount,transaction_uuid,product_code">
+<input type="hidden" name="signature" value="<?= $signature ?>">
 
-        var checkout = new KhaltiCheckout(config);
-
-        var button = document.getElementById("payment-button");
-        button.onclick = function () {
-            checkout.show({amount: <?php echo $amount_in_paisa; ?>});
-        }
-
-        function verifyPayment(payload) {
-            fetch('verify_payment.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token: payload.token,
-                    amount: <?php echo $amount_in_paisa; ?>,
-                    booking_id: <?php echo $booking_id; ?>
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Payment successful! Your booking is confirmed.');
-                    // Redirect to success page
-                    window.location.href = 'payment_success.php?booking_id=<?php echo $booking_id; ?>';
-                } else {
-                    alert('Payment verification failed: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Verification error occurred');
-            });
-        }
-    </script>
+<button type="submit" class="esewa">Pay with eSewa</button>
+</form>
+    
+</div>
 </body>
 </html>

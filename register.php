@@ -2,24 +2,52 @@
 include('includes/connect.php');
 
 if (isset($_POST['submit'])) {
-  $fullname = mysqli_real_escape_string($conn, $_POST['fullname']);
-  $email = mysqli_real_escape_string($conn, $_POST['email']);
-  $password = md5($_POST['password']); 
-  $phone = mysqli_real_escape_string($conn, $_POST['phone']);
+  $fullname = trim($_POST['fullname']);
+  $email = trim($_POST['email']);
+  $phone = trim($_POST['phone']);
+  $password = $_POST['password'];
 
-  $check = mysqli_query($conn, "SELECT * FROM users WHERE email='$email'");
-  if (mysqli_num_rows($check) > 0) {
+  // Validation
+  if (empty($fullname) || !preg_match("/^[a-zA-Z\s]+$/", $fullname)) {
+    echo "<script>alert('Full name is required and must contain only letters and spaces.');</script>";
+    exit();
+  }
+
+  if (!preg_match("/^[0-9]{10}$/", $phone)) {
+    echo "<script>alert('Phone number must be exactly 10 digits.');</script>";
+    exit();
+  }
+
+  if (!preg_match("/^(?=.*[0-9])[a-zA-Z0-9]+@gmail\.com$/", $email)) {
+    echo "<script>alert('Email must be a valid Gmail with letters and numbers (e.g. project23@gmail.com).');</script>";
+    exit();
+  }
+
+  if (!preg_match("/^(?=.*[A-Z])(?=.*\d).{8,}$/", $password)) {
+    echo "<script>alert('Password must contain at least 1 uppercase letter, 1 number, and minimum 8 characters.');</script>";
+    exit();
+  }
+
+  // Check if email exists
+  $stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ?");
+  mysqli_stmt_bind_param($stmt, "s", $email);
+  mysqli_stmt_execute($stmt);
+  mysqli_stmt_store_result($stmt);
+  if (mysqli_stmt_num_rows($stmt) > 0) {
     echo "<script>alert('Email already registered. Please login instead.');</script>";
   } else {
-    $query = "INSERT INTO users (fullname, email, password, phone, role) 
-              VALUES ('$fullname', '$email', '$password', '$phone', 'User')";
-    if (mysqli_query($conn, $query)) {
+    $hashed_password = md5($password); // Note: Consider using password_hash for better security
+    $stmt = mysqli_prepare($conn, "INSERT INTO users (fullname, email, password, phone, role) VALUES (?, ?, ?, ?, 'User')");
+    mysqli_stmt_bind_param($stmt, "ssss", $fullname, $email, $hashed_password, $phone);
+    if (mysqli_stmt_execute($stmt)) {
       echo "<script>alert('Registration successful! You can now log in.'); window.location='login.php';</script>";
     } else {
-      echo "<script>alert('Error: " . mysqli_error($conn) . "');</script>";
+      echo "<script>alert('Registration failed.');</script>";
     }
   }
+  mysqli_stmt_close($stmt);
 }
+?>
 
 ?>
 
@@ -182,15 +210,31 @@ if (isset($_POST['submit'])) {
     <p>Already have an account? <a href="login.php">Login here</a></p>
   </div>
 
-  <script>
-    function validateForm() {
-      const password = document.getElementById("password").value;
-      if (password.length < 8) {
-        alert("Password must be at least 8 characters long.");
-        return false;
-      }
-      return true;
-    }
-  </script>
+<script>
+function validateForm(){
+const email=document.getElementById("email").value
+const phone=document.getElementById("phone").value
+const password=document.getElementById("password").value
+
+const gmail=/^(?=.*[0-9])[a-zA-Z0-9]+@gmail\.com$/
+const phonePattern=/^[0-9]{10}$/
+const passPattern=/^(?=.*[A-Z])(?=.*\d).{8,}$/
+
+if(!gmail.test(email)){
+  alert("Email must be like project23@gmail.com")
+  return false
+}
+if(!phonePattern.test(phone)){
+  alert("Phone must be 10 digits")
+  return false
+}
+if(!passPattern.test(password)){
+  alert("Password must contain 1 capital letter, 1 number, min 8 characters")
+  return false
+}
+return true
+}
+</script>
+
 </body>
 </html>

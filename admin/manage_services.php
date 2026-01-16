@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/auth_check.php';
+require_login('Admin');
 include('../includes/connect.php');
-
-// Uncomment when admin login is implemented
-// if (!isset($_SESSION['role']) || $_SESSION['role'] != 'Admin') {
-//     header("Location: ../login.php");
-//     exit();
-// }
 
 // ADD SERVICE
 // if (isset($_POST['add_service'])) {
@@ -62,10 +57,43 @@ include('../includes/connect.php');
 
 // ADD SERVICE
 if (isset($_POST['add_service'])) {
-    $name = mysqli_real_escape_string($conn, $_POST['service_name']);
-    $price = mysqli_real_escape_string($conn, $_POST['price']);
-    $description = mysqli_real_escape_string($conn, $_POST['description']);
-    $service_type = mysqli_real_escape_string($conn, $_POST['service_type']);  // Service Type
+    $name = trim($_POST['service_name']);
+    $price = trim($_POST['price']);
+    $description = trim($_POST['description']);
+    $service_type = trim($_POST['service_type']);
+
+    // Validation
+    if (empty($name)) {
+        echo "<script>alert('Service name is required.');</script>";
+        exit();
+    }
+
+    if (!is_numeric($price) || $price <= 0) {
+        echo "<script>alert('Price must be a positive number.');</script>";
+        exit();
+    }
+
+    if (empty($description)) {
+        echo "<script>alert('Description is required.');</script>";
+        exit();
+    }
+
+    if (empty($service_type)) {
+        echo "<script>alert('Service type is required.');</script>";
+        exit();
+    }
+
+    // Image validation
+    if (!isset($_FILES['image']) || $_FILES['image']['error'] != UPLOAD_ERR_OK) {
+        echo "<script>alert('Please upload a valid image.');</script>";
+        exit();
+    }
+
+    $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!in_array($_FILES['image']['type'], $allowed_types)) {
+        echo "<script>alert('Only JPG, PNG, and GIF images are allowed.');</script>";
+        exit();
+    }
 
     $image_name = $_FILES['image']['name'];
     $image_tmp = $_FILES['image']['tmp_name'];
@@ -74,7 +102,7 @@ if (isset($_POST['add_service'])) {
     if (move_uploaded_file($image_tmp, $upload_path)) {
         // Prepare statement for security
         $stmt = $conn->prepare("INSERT INTO services (service_name, price, image, description, service_type) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("sdsss", $name, $price, $image_name, $description, $service_type);  // Bind service_type
+        $stmt->bind_param("sdsss", $name, $price, $image_name, $description, $service_type);
         $stmt->execute();
         $stmt->close();
         echo "<script>alert('Service added successfully!'); window.location='manage_services.php';</script>";

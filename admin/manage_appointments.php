@@ -1,6 +1,7 @@
 <?php
+require_once __DIR__ . '/../includes/auth_check.php';
+require_login('Admin');
 include('../includes/connect.php');
-session_start();
 ?>
 
 <html lang="en">
@@ -14,7 +15,27 @@ session_start();
       background: linear-gradient(to right, #d5b1bcff, #ff5e8e);
       margin: 0;
       padding: 20px 0;
+      overflow-x: hidden; /* FIX 1 */
     }
+
+    /* ---------- ADDED FIXES ---------- */
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
+    }
+
+    .sidebar {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    .main-content {
+        max-width: calc(100% - 240px) !important;
+        overflow-x: hidden !important;
+    }
+    /* -------------------------------- */
+
     .container {
       width: 90%;
       max-width: 1000px;
@@ -25,15 +46,23 @@ session_start();
       box-shadow: 0 5px 20px rgba(0,0,0,0.1);
     }
     h2 { text-align: center; color: #ff5e8e; margin-bottom: 25px; }
-    table { width: 100%; border-collapse: collapse; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
     th, td {
       padding: 10px 12px;
       border-bottom: 1px solid #ddd;
       text-align: left;
       vertical-align: middle;
+      word-wrap: break-word;
     }
+
     th { background-color: #ff5e8e; color: #fff; }
     tr:hover { background-color: #f9f9f9; }
+
     img.service-img {
       width: 70px; height: 70px;
       border-radius: 10px; object-fit: cover;
@@ -61,7 +90,8 @@ session_start();
 </head>
 
 <body>
-<div style="width:220px; background:#ff5e8e; color:#fff; height:100vh; padding:30px 20px; position:fixed;">
+
+<div class="sidebar" style="width:220px; background:#ff5e8e; color:#fff; height:100vh; padding:30px 20px; position:fixed;">
     <h2 style="text-align:center; margin-bottom:30px;">BeautiEase</h2>
     <ul style="list-style:none; padding:0;">
       <li style="margin:15px 0;"><a href="dashboard.php" style="color:#fff; text-decoration:none;">Dashboard</a></li>
@@ -73,34 +103,48 @@ session_start();
 </div>
 
 <!-- Main Content -->
-<div style="margin-left:240px; padding:30px; width:calc(100% - 240px);">
+<div class="main-content" style="
+    margin-left:240px;
+    padding:30px;
+    max-width:calc(100% - 240px);
+    overflow-x:auto;
+">
     <div style="background:#fff; padding:20px 25px; border-radius:10px; box-shadow:0 3px 10px rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
         <h1 style="color:#ff5e8e;">Manage appointment</h1>
         <p>Welcome, Admin 👩‍💼</p>
     </div>
 
 <?php
-// SQL QUERY - Sort by status and date/time
-$query = "SELECT b.id, b.address_type, b.address, b.phone, b.date, b.time, b.email, b.status,
-                 s.service_name, s.price, s.image
-          FROM bookings b
-          JOIN services s ON b.service_id = s.id
-          ORDER BY FIELD(b.status, 'Pending', 'Approved', 'Completed'), b.date ASC, b.time ASC";
-
-// RUN QUERY
+$query = "
+SELECT 
+    b.id,
+    b.address_type,
+    b.address,
+    b.phone,
+    b.date,
+    b.time,
+    b.email,
+    b.status,
+    s.service_name,
+    s.price,
+    s.image,
+    IFNULL(p.payment_status, 'Unpaid') AS payment_status
+FROM bookings b
+JOIN services s ON b.service_id = s.id
+LEFT JOIN payments p ON b.id = p.booking_id
+ORDER BY b.id ASC
+";
 $result = mysqli_query($conn, $query);
 
-// CHECK FOR SQL ERRORS
 if (!$result) {
     die("<p style='color:red; font-weight:bold;'>SQL Error: " . mysqli_error($conn) . "</p>");
 }
 
-// DISPLAY DATA
 if (mysqli_num_rows($result) > 0) {
 
     echo "<table>
             <tr>
-              <th>ID</th>
+              <th>S.No</th>
               <th>Image</th>
               <th>Service</th>
               <th>Price (Rs.)</th>
@@ -110,16 +154,18 @@ if (mysqli_num_rows($result) > 0) {
               <th>Address</th>
               <th>User Phone</th>
               <th>Status</th>
+              <th>Payment Status</th>
               <th>Action</th>
             </tr>";
 
+    $serial = 1;
     while ($row = mysqli_fetch_assoc($result)) {
 
         $imagePath = "../uploads/" . $row['image'];
         $status = $row['status'];
 
         echo "<tr>
-                <td>{$row['id']}</td>
+                <td>{$serial}</td>
                 <td><img src='{$imagePath}' class='service-img' alt='Service Image'></td>
                 <td>{$row['service_name']}</td>
                 <td>{$row['price']}</td>
@@ -129,11 +175,14 @@ if (mysqli_num_rows($result) > 0) {
                 <td>{$row['address']}</td>
                 <td>{$row['phone']}</td>
                 <td><strong>{$status}</strong></td>
+                <td>{$row['payment_status']}</td>
                 <td>";
 
-        // ---------------------------
-        // SHOW BUTTONS BASED ON STATUS
-        // ---------------------------
+                if ($row['payment_status'] == 'Paid') {
+    echo "<span style='color:green;font-weight:bold;'>Paid</span>";
+} else {
+    echo "<span style='color:red;font-weight:bold;'>Unpaid</span>";
+}
 
         if ($status == 'Pending') {
             echo "<a href='approve_booking.php?id={$row['id']}&email={$row['email']}&service={$row['service_name']}'>
@@ -151,13 +200,13 @@ if (mysqli_num_rows($result) > 0) {
             echo "<button class='action-btn complete-btn' style='background:#2ecc71; cursor:not-allowed;'>Completed ✓</button>";
         }
 
-        // Delete button always visible
-        echo "<a href='delete_booking.php?id={$row['id']}' onclick=\"return confirm('Are you sure you want to delete this booking?');\">
-                <button class='action-btn delete-btn'>Delete</button>
+        echo "<a href='delete_booking.php?id={$row['id']}' onclick=\"return confirm('Are you sure you want to decline this booking?');\">
+                <button class='action-btn delete-btn'>Decline</button>
               </a>";
 
         echo "</td>
               </tr>";
+        $serial++;
     }
 
     echo "</table>";
@@ -168,6 +217,8 @@ if (mysqli_num_rows($result) > 0) {
 ?>
 
 <a href='manageuser.php' class='back'>Dashboard</a>
+
 </div>
+
 </body>
 </html>

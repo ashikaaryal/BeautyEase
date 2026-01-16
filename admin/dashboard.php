@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/auth_check.php';
+require_login('Admin');
 include('../includes/connect.php');
-
-// Uncomment this when admin login is ready
-// if (!isset($_SESSION['role']) || $_SESSION['role'] != 'Admin') {
-//   header("Location: ../login.php");
-//   exit();
-// }
 
 // Count users
 $user_result = mysqli_query($conn, "SELECT COUNT(*) AS total FROM users");
@@ -188,11 +183,11 @@ $users = mysqli_query($conn, "SELECT * FROM users ORDER BY id DESC");
       </div>
     </div>
 
-    <div class="chart-section">
+    <!-- <div class="chart-section">
       <h2>Activity Overview</h2>
       <canvas id="activityChart"></canvas>
     </div>
-  </div>
+  </div> -->
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>

@@ -9,7 +9,8 @@ class KhaltiPayment {
     
     public function __construct() {
         // Replace with your actual Khalti secret key
-              $this->secret_key = "5f3811ecdf774c769b1b2e693294a982"; // Your secret key here
+            //   $this->secret_key = "test_public_key_ff19359e3ad34b13acf6a03dff59fa4d";
+        $this->secret_key = "test_secret_key_d43dbe557bb5444a9e076c7ec382ef80";
         $this->verification_url = "https://khalti.com/api/v2/payment/verify/";
     }
     

@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/auth_check.php';
+require_login('Admin');
 include('../includes/connect.php');
-
-// Uncomment when admin login is implemented
-// if (!isset($_SESSION['role']) || $_SESSION['role'] != 'Admin') {
-//     header("Location: ../login.php");
-//     exit();
-// }
 
 $service = null;
 $service_id = 0;
@@ -30,15 +25,37 @@ if (isset($_GET['id'])) {
 
 // UPDATE SERVICE
 if (isset($_POST['update_service'])) {
-    $id = mysqli_real_escape_string($conn, $_POST['service_id']);
-    $name = mysqli_real_escape_string($conn, $_POST['service_name']);
-    $price = mysqli_real_escape_string($conn, $_POST['price']);
-    $description = mysqli_real_escape_string($conn, $_POST['description']);
-    $current_image = mysqli_real_escape_string($conn, $_POST['current_image']);
+    $id = intval($_POST['service_id']);
+    $name = trim($_POST['service_name']);
+    $price = trim($_POST['price']);
+    $description = trim($_POST['description']);
+    $current_image = $_POST['current_image'];
     $image_name = $current_image; // Default to existing image
+
+    // Validation
+    if (empty($name)) {
+        echo "<script>alert('Service name is required.');</script>";
+        exit();
+    }
+
+    if (!is_numeric($price) || $price <= 0) {
+        echo "<script>alert('Price must be a positive number.');</script>";
+        exit();
+    }
+
+    if (empty($description)) {
+        echo "<script>alert('Description is required.');</script>";
+        exit();
+    }
 
     // Check if a new image was uploaded
     if ($_FILES['image']['name']) {
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($_FILES['image']['type'], $allowed_types)) {
+            echo "<script>alert('Only JPG, PNG, and GIF images are allowed.');</script>";
+            exit();
+        }
+
         $image_name = $_FILES['image']['name'];
         $image_tmp = $_FILES['image']['tmp_name'];
         $upload_path = "../uploads/" . basename($image_name);

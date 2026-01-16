@@ -3,38 +3,65 @@ include('includes/connect.php');
 session_start();
 
 if (isset($_POST['login'])) {
-  $email = $_POST['email'];
-  $password = md5($_POST['password']);
-  $query = mysqli_query($conn, "SELECT * FROM users WHERE email='$email' AND password='$password'");
-  $user = mysqli_fetch_assoc($query);
+  $email = trim($_POST['email']);
+  $password = $_POST['password'];
 
-  if ($user) {
+  // Validation
+  if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    echo "<script>alert('Please enter a valid email address.');</script>";
+    exit();
+  }
 
-    // Store session values
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['role'] = $user['role'];
-    $_SESSION['email'] = $user['email'];   // ✅ IMPORTANT (makes logout show)
+  if (empty($password)) {
+    echo "<script>alert('Please enter your password.');</script>";
+    exit();
+  }
 
-    // Redirect based on role
-    if ($user['role'] == 'Admin') {
-      header("Location: admin/dashboard.php");
-      exit();
+  $hashed_password = md5($password);
+
+  $stmt = mysqli_prepare($conn, "SELECT id, role, email FROM users WHERE email = ? AND password = ?");
+  mysqli_stmt_bind_param($stmt, "ss", $email, $hashed_password);
+  mysqli_stmt_execute($stmt);
+  mysqli_stmt_store_result($stmt);
+
+  if (mysqli_stmt_num_rows($stmt) > 0) {
+    mysqli_stmt_bind_result($stmt, $user_id, $role, $user_email);
+    mysqli_stmt_fetch($stmt);
+
+    // SESSION SET
+    $_SESSION['user_id'] = $user_id;
+    $_SESSION['role'] = $role;
+    $_SESSION['email'] = $user_email;
+
+    // COOKIE SET (Remember Me)
+    if (isset($_POST['remember'])) {
+        setcookie("user_email", $user_email, time() + (86400 * 7), "/");
+        setcookie("user_role", $role, time() + (86400 * 7), "/");
+    }
+
+    // REDIRECT
+    if ($role == 'Admin') {
+        header("Location: admin/dashboard.php");
+        exit();
     } else {
-      header("Location: index.php");
-      exit();
+        header("Location: index.php");
+        exit();
     }
 
   } else {
-    echo "<script>alert('Invalid login details');</script>";
+    echo "<script>alert('Invalid login details.');</script>";
   }
+  mysqli_stmt_close($stmt);
 }
 ?>
-
+?>
 <!DOCTYPE html>
 <html>
 <head>
+  <title>Login - BeautiEase</title>
+
   <style>
-    /* ==== Global Reset ==== */
+/* ==== Global Reset ==== */
 * {
   margin: 0;
   padding: 0;
@@ -143,20 +170,28 @@ body {
     font-size: 24px;
   }
 }
-
   </style>
-  <title>Login - BeautiEase</title>
-  <!-- <link rel="stylesheet" href="assets/css/style.css"> -->
 </head>
+
 <body>
+
   <div class="container">
     <h2>Login</h2>
     <form method="POST">
+
       <input type="email" name="email" placeholder="Enter Email" required>
       <input type="password" name="password" placeholder="Enter Password" required>
+
+      <label style="float:left; margin-bottom:10px;">
+        <input type="checkbox" name="remember"> Remember Me
+      </label>
+      <br><br>
+
       <button type="submit" name="login" class="btn">Login</button>
     </form>
+
     <p>Don't have an account? <a href="register.php">Register</a></p>
   </div>
+
 </body>
 </html>

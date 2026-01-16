@@ -1,6 +1,7 @@
 <?php
+require_once __DIR__ . '/../includes/auth_check.php';
+require_login('Admin');
 include('../includes/connect.php');
-session_start();
 
 if (isset($_POST['action']) && isset($_POST['selected_appointments'])) {
     $action = $_POST['action'];

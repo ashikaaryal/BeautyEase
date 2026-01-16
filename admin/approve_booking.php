@@ -5,6 +5,8 @@ use PHPMailer\PHPMailer\Exception;
 require '../admin/PHPMailer/src/Exception.php';
 require '../admin/PHPMailer/src/PHPMailer.php';
 require '../admin/PHPMailer/src/SMTP.php';
+require_once __DIR__ . '/../includes/auth_check.php';
+require_login('Admin');
 include('../includes/connect.php');
 
 if (isset($_GET['id']) && isset($_GET['email']) && isset($_GET['service'])) {

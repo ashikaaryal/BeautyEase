@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/auth_check.php';
+require_login('Admin');
 include('../includes/connect.php');
-
-// --- Uncomment after admin login is ready ---
-// if (!isset($_SESSION['role']) || $_SESSION['role'] != 'Admin') {
-//   header("Location: ../login.php");
-//   exit();
-// }
 
 // DELETE USER
 if (isset($_GET['delete'])) {
@@ -18,7 +13,7 @@ if (isset($_GET['delete'])) {
 if (isset($_GET['make_admin'])) {
   $id = intval($_GET['make_admin']);
   mysqli_query($conn, "UPDATE users SET role='Admin' WHERE id=$id");
-  echo "<script>alert('User promoted to Admin successfully!'); window.location='manage_users.php';</script>";
+  echo "<script>alert('User promoted to Admin successfully!'); window.location='manageuser.php';</script>";
 }
 
 // FETCH USERS
@@ -37,9 +32,9 @@ $users = mysqli_query($conn, "SELECT * FROM users ORDER BY id ASC");
     <h2 style="text-align:center; margin-bottom:30px;">BeautiEase</h2>
     <ul style="list-style:none; padding:0;">
       <li style="margin:15px 0;"><a href="dashboard.php" style="color:#fff; text-decoration:none;">Dashboard</a></li>
-      <li style="margin:15px 0;"><a href="manage_users.php" style="color:#ffe1eb; font-weight:bold; text-decoration:none;">Manage Users</a></li>
+      <li style="margin:15px 0;"><a href="manageuser.php" style="color:#ffe1eb; font-weight:bold; text-decoration:none;">Manage Users</a></li>
       <li style="margin:15px 0;"><a href="manage_services.php" style="color:#fff; text-decoration:none;">Manage Services</a></li>
-      <li style="margin:15px 0;"><a href="../manage_appointments.php" style="color:#fff; text-decoration:none;">Appointments</a></li>
+      <li style="margin:15px 0;"><a href="manage_appointments.php" style="color:#fff; text-decoration:none;">Appointments</a></li>
       <li style="margin:15px 0;"><a href="../logout.php" style="color:#fff; text-decoration:none;">Logout</a></li>
     </ul>
   </div>
