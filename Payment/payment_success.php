@@ -2,87 +2,94 @@
 session_start();
 include('../includes/connect.php');
 
-// Prevent direct access
-if (!isset($_SESSION['booking_id'], $_SESSION['transaction_uuid'])) {
-    header("Location: ../book_appointment.php");
-    exit();
+if (!isset($_GET['data'])) {
+    die("Invalid Request: missing data");
 }
 
-$booking_id = $_SESSION['booking_id'];
-$transaction_uuid = $_SESSION['transaction_uuid'];
-$paid_amount = $_SESSION['amount']; // original amount
-
-// ✅ Update booking table (SAVE PAYMENT)
-$sql = "UPDATE payments
-        SET payment_status = 'Paid',
-            payment_method = 'eSewa',
-            transaction_uuid = '$transaction_uuid',
-            paid_amount = '$paid_amount'
-        WHERE booking_id = '$booking_id'";
-
-$result = mysqli_query($conn, $sql);
-
-if (!$result) {
-    die("Database error: " . mysqli_error($conn));
+$decoded = json_decode(base64_decode($_GET['data']), true);
+if (!is_array($decoded)) {
+    die("Invalid data payload");
 }
 
-// Clear payment-related session data
+$transaction_uuid = $decoded['transaction_uuid'] ?? '';
+$status = $decoded['status'] ?? '';
+$total_amount = $decoded['total_amount'] ?? '';
+
+if ($status !== "COMPLETE") {
+    die("Payment not completed");
+}
+
+if (!isset($_SESSION['transaction_uuid']) || $transaction_uuid !== $_SESSION['transaction_uuid']) {
+    die("Transaction mismatch");
+}
+
+/* ==========================
+   VERIFY WITH ESEWA SERVER
+========================== */
+
+$product_code = "EPAYTEST";
+
+$url = "https://rc-epay.esewa.com.np/api/epay/transaction/status/?product_code={$product_code}&transaction_uuid={$transaction_uuid}&total_amount={$total_amount}";
+
+$raw = @file_get_contents($url);
+if ($raw === false) {
+    die("Unable to verify with eSewa server");
+}
+
+$result = json_decode($raw, true);
+if (!is_array($result) || ($result['status'] ?? '') !== "COMPLETE") {
+    die("Payment verification failed");
+}
+
+/* ==========================
+   STORE / UPDATE DATABASE
+========================== */
+
+$booking_id = (int) ($_SESSION['booking_id'] ?? 0);
+$payment_method = "eSewa";
+$payment_status = "Completed";
+
+/* Check if record exists */
+$check = $conn->prepare("SELECT id FROM payments WHERE transaction_uuid = ?");
+$check->bind_param("s", $transaction_uuid);
+$check->execute();
+$check->store_result();
+
+if ($check->num_rows > 0) {
+
+    // Update existing record
+    $stmt = $conn->prepare("UPDATE payments 
+        SET payment_status = ?, paid_at = NOW() 
+        WHERE transaction_uuid = ?");
+
+    $stmt->bind_param("ss", $payment_status, $transaction_uuid);
+
+} else {
+
+    // Insert new record (if not inserted earlier)
+    $stmt = $conn->prepare("INSERT INTO payments 
+        (booking_id, transaction_uuid, amount, payment_method, payment_status, paid_at) 
+        VALUES (?, ?, ?, ?, ?, NOW())");
+
+    $stmt->bind_param(
+        "isdss",
+        $booking_id,
+        $transaction_uuid,
+        $total_amount,
+        $payment_method,
+        $payment_status
+    );
+}
+
+$stmt->execute();
+$stmt->close();
+$check->close();
+
+/* Optional: clear session */
 unset($_SESSION['transaction_uuid']);
+unset($_SESSION['booking_id']);
 unset($_SESSION['amount']);
+
+echo "<h2>Payment Successful!</h2>";
+header("Refresh: 3; URL=../index.php");
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Payment Successful</title>
-
-<style>
-body{
-    font-family:Poppins;
-    background:linear-gradient(to right,#d5b1bc,#ff5e8e);
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-}
-.box{
-    background:#fff;
-    padding:35px;
-    width:380px;
-    border-radius:20px;
-    text-align:center;
-}
-.icon{
-    font-size:60px;
-    color:#4CAF50;
-}
-.btn{
-    display:block;
-    margin-top:20px;
-    padding:12px;
-    background:#ff5e8e;
-    color:#fff;
-    border-radius:10px;
-    text-decoration:none;
-    font-weight:600;
-}
-</style>
-</head>
-
-<body>
-
-<div class="box">
-    <div class="icon">✔</div>
-    <h2>Payment Successful!</h2>
-    <p>Your booking has been confirmed.</p>
-
-    <p><strong>Booking ID:</strong> #<?= htmlspecialchars($booking_id) ?></p>
-    <p><strong>Amount Paid:</strong> Rs. <?= htmlspecialchars($paid_amount) ?></p>
-    <p><strong>Payment Method:</strong> eSewa</p>
-
-    <a href="../user/dashboard.php" class="btn">Go to Dashboard</a>
-</div>
-
-</body>
-</html>

@@ -128,12 +128,15 @@ SELECT
     s.service_name,
     s.price,
     s.image,
+    IFNULL(p.amount, 0) AS payment_amount,
     IFNULL(p.payment_status, 'Unpaid') AS payment_status
 FROM bookings b
 JOIN services s ON b.service_id = s.id
 LEFT JOIN payments p ON b.id = p.booking_id
-ORDER BY b.id ASC
+ORDER BY b.id DESC
 ";
+
+
 $result = mysqli_query($conn, $query);
 
 if (!$result) {
@@ -154,60 +157,69 @@ if (mysqli_num_rows($result) > 0) {
               <th>Address</th>
               <th>User Phone</th>
               <th>Status</th>
-              <th>Payment Status</th>
+              <th>Payment Amount </th>
               <th>Action</th>
             </tr>";
+$serial = 1;
 
-    $serial = 1;
-    while ($row = mysqli_fetch_assoc($result)) {
+while ($row = mysqli_fetch_assoc($result)) {
 
-        $imagePath = "../uploads/" . $row['image'];
-        $status = $row['status'];
+    $imagePath = "../uploads/" . $row['image'];
+    $status = $row['status'];
+    $paymentStatus = $row['payment_status'];
+    $paymentAmount = $row['payment_amount'];
 
-        echo "<tr>
-                <td>{$serial}</td>
-                <td><img src='{$imagePath}' class='service-img' alt='Service Image'></td>
-                <td>{$row['service_name']}</td>
-                <td>{$row['price']}</td>
-                <td>{$row['date']}</td>
-                <td>{$row['time']}</td>
-                <td>{$row['address_type']}</td>
-                <td>{$row['address']}</td>
-                <td>{$row['phone']}</td>
-                <td><strong>{$status}</strong></td>
-                <td>{$row['payment_status']}</td>
-                <td>";
+    echo "<tr>
+            <td>{$serial}</td>
+            <td><img src='{$imagePath}' class='service-img' alt='Service Image'></td>
+            <td>{$row['service_name']}</td>
+            <td>{$row['price']}</td>
+            <td>{$row['date']}</td>
+            <td>{$row['time']}</td>
+            <td>{$row['address_type']}</td>
+            <td>{$row['address']}</td>
+            <td>{$row['phone']}</td>
+            <td><strong>{$status}</strong></td>
+            <td><strong>{$paymentAmount}</strong></td>
+            <td>";
 
-                if ($row['payment_status'] == 'Paid') {
-    echo "<span style='color:green;font-weight:bold;'>Paid</span>";
-} else {
-    echo "<span style='color:red;font-weight:bold;'>Unpaid</span>";
+    // ---- ACTION BUTTONS ----
+
+    if ($status == 'Pending') {
+        echo "<a href='approve_booking.php?id={$row['id']}&email={$row['email']}&service={$row['service_name']}'>
+                <button class='action-btn approve-btn'>Approve</button>
+              </a>";
+    }
+
+    if ($status == 'Approved') {
+        echo "<a href='complete.php?id={$row['id']}&email={$row['email']}&service={$row['service_name']}'>
+                <button class='action-btn complete-btn'>Mark Completed</button>
+              </a>";
+    }
+
+    if ($status == 'Completed') {
+        echo "<button class='action-btn complete-btn' style='background:#2ecc71; cursor:not-allowed;'>
+                Completed ✓
+              </button>";
+    }
+
+    echo "<a href='delete_booking.php?id={$row['id']}'
+    
+            onclick=\"return confirm('Are you sure you want to decline this booking?');\">
+            
+            <button class='action-btn delete-btn'>Decline</button>
+          </a>";
+
+    // ---- PAYMENT STATUS COLOR ----
+    echo "<br><strong style='color:" . ($paymentStatus == 'Paid' ? "green" : "red") . ";'>
+            {$paymentStatus}
+          </strong>";
+
+    echo "</td></tr>";
+
+    $serial++;
 }
 
-        if ($status == 'Pending') {
-            echo "<a href='approve_booking.php?id={$row['id']}&email={$row['email']}&service={$row['service_name']}'>
-                    <button class='action-btn approve-btn'>Approve</button>
-                  </a>";
-        }
-
-        if ($status == 'Approved') {
-            echo "<a href='complete.php?id={$row['id']}&email={$row['email']}&service={$row['service_name']}'>
-                    <button class='action-btn complete-btn'>Mark Completed</button>
-                  </a>";
-        }
-
-        if ($status == 'Completed') {
-            echo "<button class='action-btn complete-btn' style='background:#2ecc71; cursor:not-allowed;'>Completed ✓</button>";
-        }
-
-        echo "<a href='delete_booking.php?id={$row['id']}' onclick=\"return confirm('Are you sure you want to decline this booking?');\">
-                <button class='action-btn delete-btn'>Decline</button>
-              </a>";
-
-        echo "</td>
-              </tr>";
-        $serial++;
-    }
 
     echo "</table>";
 

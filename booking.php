@@ -13,26 +13,35 @@ $service_price = 0;
 $message = '';
 $msg_class = '';
 
-if (isset($_GET['service'])) {
-    $service_id = $_GET['service'];
-    $query = mysqli_query($conn, "SELECT * FROM services WHERE id='$service_id'");
-    $service = mysqli_fetch_assoc($query);
+if (!isset($_GET['service']) || !is_numeric($_GET['service'])) {
+    header("Location: services.php");
+    exit();
+}
 
-    if ($service) {
-        $service_name = $service['service_name'];
-        $service_price = $service['price'];
-    }
+$service_id = intval($_GET['service']);
+$query = mysqli_prepare($conn, "SELECT service_name, price FROM services WHERE id = ?");
+mysqli_stmt_bind_param($query, "i", $service_id);
+mysqli_stmt_execute($query);
+$result = mysqli_stmt_get_result($query);
+$service = mysqli_fetch_assoc($result);
+
+if ($service) {
+    $service_name = $service['service_name'];
+    $service_price = $service['price'];
+} else {
+    header("Location: services.php");
+    exit();
 }
 
 if (isset($_POST['book'])) {
     $email = $_SESSION['email'];
-
     $service_id = intval($_POST['service_id']);
     $address_type = $_POST['address_type'];
     $address = ($address_type == "Home Service") ? trim($_POST['address']) : '';
     $date = $_POST['date'];
     $time = $_POST['time'];
     $phone = trim($_POST['phone']);
+    $service_price= $service['price'];
 
     // Validation
     if (empty($date) || strtotime($date) < strtotime('today')) {
@@ -56,28 +65,37 @@ if (isset($_POST['book'])) {
     }
 
     // Check if slot is available
-    $stmt = mysqli_prepare($conn, "SELECT id FROM bookings WHERE service_id = ? AND date = ? AND time = ?");
+    $stmt = mysqli_prepare($conn, "SELECT id FROM bookings WHERE service_id = ? AND `date` = ? AND `time` = ?");
+    if ($stmt === false) {
+        die("Prepare failed: " . mysqli_error($conn));
+    }
     mysqli_stmt_bind_param($stmt, "iss", $service_id, $date, $time);
     mysqli_stmt_execute($stmt);
     mysqli_stmt_store_result($stmt);
     if (mysqli_stmt_num_rows($stmt) > 0) {
+        mysqli_stmt_close($stmt);
         echo "<script>alert('Slot already booked.'); history.back();</script>";
         exit();
     }
     mysqli_stmt_close($stmt);
 
     // Insert booking
-    $stmt = mysqli_prepare($conn, "INSERT INTO bookings (service_id, address_type, address, date, time, email, phone, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', 'Unpaid')");
-    mysqli_stmt_bind_param($stmt, "issssss", $service_id, $address_type, $address, $date, $time, $email, $phone);
+    $stmt = mysqli_prepare($conn, "INSERT INTO bookings (service_id, address_type, address, price, `date`, `time`, email, phone, status) VALUES (?,?, ?, ?, ?, ?, ?, ?, 'Pending')");
+    if ($stmt === false) {
+        die("Prepare failed: " . mysqli_error($conn));
+    }
+    mysqli_stmt_bind_param($stmt, "isssssss", $service_id, $address_type, $address,  $service_price, $date, $time, $email, $phone);
     if (mysqli_stmt_execute($stmt)) {
         $_SESSION['booking_id'] = mysqli_insert_id($conn);
         $_SESSION['amount'] = $service_price;
+        mysqli_stmt_close($stmt);
         header("Location: Payment/payment.php");
         exit();
     } else {
         $message = "Booking failed";
         $msg_class = "error";
     }
+    mysqli_stmt_close($stmt);
     mysqli_stmt_close($stmt);
 }
 ?>
@@ -188,7 +206,7 @@ textarea{
 <label>Phone</label>
 <input type="text" name="phone" required>
 
-<button class="btn" href="payment.php" name="book">Confirm Booking</button>
+<button class="btn" type="submit" name="book">Confirm Booking</button>
 
 
 

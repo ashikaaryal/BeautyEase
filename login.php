@@ -54,7 +54,6 @@ if (isset($_POST['login'])) {
   mysqli_stmt_close($stmt);
 }
 ?>
-?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -149,6 +148,7 @@ body {
   font-weight: 600;
   text-decoration: none;
 }
+
 
 .container a:hover {
   text-decoration: underline;

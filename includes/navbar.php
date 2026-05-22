@@ -22,7 +22,7 @@ session_start();
 
       <?php if (isset($_SESSION['email'])): ?>
           <!-- Logged In -->
-          <li><a href="user.php">My profile</a></li>
+          <li><a href="mybookings.php">My profile</a></li>
           <li><a href="logout.php" class="logout-btn" style="color:red;font-weight:bold;">Logout</a></li>
       <?php else: ?>
           <!-- Guest -->

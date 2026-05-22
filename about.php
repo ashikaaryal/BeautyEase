@@ -88,9 +88,9 @@
     </div>
 
     <div class="about-content">
-      <h2>About BeautyEase</h2>
+      <h2>About BeautiEase</h2>
       <p>
-        Welcome to <span class="highlight">BeautyEase</span>,where beauty meets confidence, and self-care becomes an art. 
+        Welcome to <span class="highlight">BeautiEase</span>,where beauty meets confidence, and self-care becomes an art. 
         We believe that every person deserves to feel radiant, inside and out. That's why we've created a warm, elegant space 
         where you can relax and rediscover your inner glow.
       </p>
@@ -109,7 +109,7 @@
       </p>
 
       <p>
-        Come, unwind, and let <span class="highlight">BeautyEase</span> redefine your beauty experience
+        Come, unwind, and let <span class="highlight">BeautiEase</span> redefine your beauty experience
         because you deserve nothing less than perfection.
       </p>
     </div>
